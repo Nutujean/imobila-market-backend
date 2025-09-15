@@ -113,6 +113,19 @@ app.get("/api/anunturi", async (req, res) => {
     res.status(500).json({ error: "Eroare la listarea anunțurilor" });
   }
 });
+// --- Ruta pentru un singur anunț ---
+app.get("/api/anunturi/:id", async (req, res) => {
+  try {
+    const anunt = await Anunt.findById(req.params.id).populate("user", "email");
+    if (!anunt) {
+      return res.status(404).json({ error: "Anunțul nu a fost găsit" });
+    }
+    res.json(anunt);
+  } catch (err) {
+    res.status(500).json({ error: "Eroare la preluarea anunțului" });
+  }
+});
+
 
 // --- Pornire server ---
 const PORT = process.env.PORT || 5000;
