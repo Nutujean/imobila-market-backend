@@ -3,21 +3,19 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 
 dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// --- Ruta de test ---
-app.get("/api/test", (req, res) => {
-  res.json({ message: "Codul nou rulează pe Render ✅" });
-});
-
 // --- Conectare MongoDB Atlas ---
 mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => console.log("✅ Conectat la MongoDB"))
   .catch((err) => console.error("❌ Eroare conectare MongoDB:", err));
 
@@ -113,6 +111,7 @@ app.get("/api/anunturi", async (req, res) => {
     res.status(500).json({ error: "Eroare la listarea anunțurilor" });
   }
 });
+
 // --- Ruta pentru un singur anunț ---
 app.get("/api/anunturi/:id", async (req, res) => {
   try {
@@ -125,7 +124,6 @@ app.get("/api/anunturi/:id", async (req, res) => {
     res.status(500).json({ error: "Eroare la preluarea anunțului" });
   }
 });
-
 
 // --- Pornire server ---
 const PORT = process.env.PORT || 5000;
