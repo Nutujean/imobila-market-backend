@@ -8,7 +8,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 
-// ==================== CONFIGURARE DE BAZĂ ====================
+// ==================== CONFIGURARE ====================
 const app = express();
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || "secretul_meu_super_secret";
@@ -28,7 +28,7 @@ mongoose
   .then(() => console.log("✅ Conectat la MongoDB Atlas"))
   .catch((err) => console.error("❌ Eroare MongoDB:", err));
 
-// ==================== SCHEME & MODELE ====================
+// ==================== SCHEME ====================
 const userSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   parola: String,
@@ -39,14 +39,14 @@ const anuntSchema = new mongoose.Schema({
   descriere: String,
   pret: Number,
   categorie: String,
-  imagini: [String], // 🔹 suport pentru imagini multiple
+  imagini: [String],
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 });
 
 const User = mongoose.model("User", userSchema);
 const Anunt = mongoose.model("Anunt", anuntSchema);
 
-// ==================== MIDDLEWARE AUTENTIFICARE ====================
+// ==================== MIDDLEWARE ====================
 function authMiddleware(req, res, next) {
   const token = req.headers["authorization"];
   if (!token) return res.status(401).json({ error: "Lipsă token" });
@@ -60,16 +60,20 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// ==================== CONFIGURARE UPLOAD IMAGINI ====================
+// ==================== UPLOAD ====================
+// 🔹 creează folderul uploads dacă nu există
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
   filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
 });
 const upload = multer({ storage });
 
-// ==================== RUTE AUTENTIFICARE ====================
-
-// Înregistrare user nou
+// ==================== AUTENTIFICARE ====================
 app.post("/api/register", async (req, res) => {
   try {
     const { email, parola } = req.body;
@@ -84,7 +88,6 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// Login user
 app.post("/api/login", async (req, res) => {
   try {
     const { email, parola } = req.body;
@@ -101,9 +104,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// ==================== RUTE ANUNȚURI ====================
-
-// ✅ Creare anunț cu imagini multiple
+// ==================== ANUNȚURI ====================
 app.post(
   "/api/anunturi",
   authMiddleware,
@@ -133,7 +134,6 @@ app.post(
   }
 );
 
-// ✅ Obține toate anunțurile
 app.get("/api/anunturi", async (req, res) => {
   try {
     const anunturi = await Anunt.find();
@@ -143,7 +143,6 @@ app.get("/api/anunturi", async (req, res) => {
   }
 });
 
-// ✅ Obține un anunț după ID
 app.get("/api/anunturi/:id", async (req, res) => {
   try {
     const anunt = await Anunt.findById(req.params.id);
@@ -154,7 +153,6 @@ app.get("/api/anunturi/:id", async (req, res) => {
   }
 });
 
-// ✅ Anunțurile unui utilizator
 app.get("/api/anunturile-mele", authMiddleware, async (req, res) => {
   try {
     const anunturi = await Anunt.find({ userId: req.user.id });
@@ -166,7 +164,6 @@ app.get("/api/anunturile-mele", authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ Editare anunț (păstrează imagini existente + șterge din filesystem cele eliminate)
 app.put(
   "/api/anunturi/:id",
   authMiddleware,
@@ -184,8 +181,6 @@ app.put(
           .json({ error: "Nu ai voie să modifici acest anunț" });
       }
 
-      // -------------------------
-      // păstrăm imaginile existente (trimise din frontend)
       let imaginiFinale = [];
       let imaginiTrimise = [];
       if (imaginiExistente) {
@@ -198,12 +193,10 @@ app.put(
         }
       }
 
-      // găsim ce poze au fost șterse de user
       const imaginiSterse = anunt.imagini.filter(
         (img) => !imaginiTrimise.includes(img)
       );
 
-      // ștergem fizic din uploads/
       imaginiSterse.forEach((imgPath) => {
         const filePath = path.join(
           __dirname,
@@ -214,15 +207,11 @@ app.put(
         }
       });
 
-      // -------------------------
-      // adăugăm fișierele noi
       if (req.files && req.files.length > 0) {
         const noi = req.files.map((f) => `/uploads/${f.filename}`);
         imaginiFinale = [...imaginiFinale, ...noi];
       }
 
-      // -------------------------
-      // update câmpuri
       anunt.titlu = titlu || anunt.titlu;
       anunt.descriere = descriere || anunt.descriere;
       anunt.pret = pret || anunt.pret;
@@ -238,7 +227,6 @@ app.put(
   }
 );
 
-// ✅ Ștergere anunț (șterge și imaginile fizic)
 app.delete("/api/anunturi/:id", authMiddleware, async (req, res) => {
   try {
     const anunt = await Anunt.findById(req.params.id);
@@ -248,7 +236,6 @@ app.delete("/api/anunturi/:id", authMiddleware, async (req, res) => {
       return res.status(403).json({ error: "Nu ai voie să ștergi acest anunț" });
     }
 
-    // ștergem pozele asociate
     anunt.imagini.forEach((imgPath) => {
       const filePath = path.join(
         __dirname,
@@ -266,7 +253,33 @@ app.delete("/api/anunturi/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// ==================== PORNIRE SERVER ====================
+// 🔹 Ruta nouă pentru ștergere imagine individuală
+app.delete("/api/anunturi/:id/imagini", authMiddleware, async (req, res) => {
+  try {
+    const { imagine } = req.body;
+    const anunt = await Anunt.findById(req.params.id);
+
+    if (!anunt) return res.status(404).json({ error: "Anunțul nu există" });
+    if (anunt.userId.toString() !== req.user.id) {
+      return res.status(403).json({ error: "Nu ai voie să modifici acest anunț" });
+    }
+
+    anunt.imagini = anunt.imagini.filter((img) => img !== imagine);
+
+    const filePath = path.join(__dirname, imagine.replace("/uploads", "uploads"));
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    await anunt.save();
+    res.json({ message: "✅ Imagine ștearsă cu succes", anunt });
+  } catch (err) {
+    console.error("Eroare ștergere imagine:", err);
+    res.status(500).json({ error: "Eroare server la ștergerea imaginii" });
+  }
+});
+
+// ==================== START ====================
 app.listen(PORT, () => {
   console.log(`✅ Server Imobilia Market pornit pe portul ${PORT}`);
 });
