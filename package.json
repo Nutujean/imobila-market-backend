@@ -1,6 +1,7 @@
 {
   "name": "oltenitaimobiliare-backend",
   "version": "1.0.0",
+  "description": "Backend simplu pentru Oltenita Imobiliare",
   "type": "module",
   "main": "server.js",
   "scripts": {
