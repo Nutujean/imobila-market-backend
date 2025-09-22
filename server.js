@@ -9,19 +9,18 @@ import multer from "multer";
 dotenv.config();
 const app = express();
 
-// Middleware
 app.use(express.json());
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL, // https://oltenitaimobiliare.ro
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   })
 );
 
-// Conectare la MongoDB Atlas
+// ===== Conectare MongoDB =====
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ Mongo connected"))
+  .then(() => console.log("✅ Conectat la MongoDB Atlas"))
   .catch((err) => console.error("❌ Mongo error:", err.message));
 
 // ===== MODELE =====
@@ -42,7 +41,7 @@ const anuntSchema = new mongoose.Schema({
 });
 const Anunt = mongoose.model("Anunt", anuntSchema);
 
-// ===== MIDDLEWARE AUTH =====
+// ===== Middleware auth =====
 const authMiddleware = (req, res, next) => {
   const header = req.headers["authorization"];
   if (!header) return res.status(401).json({ error: "Lipsă token" });
@@ -54,22 +53,19 @@ const authMiddleware = (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ error: "Token invalid" });
   }
 };
 
-// ===== MULTER pentru upload local =====
+// ===== Upload imagini =====
 const upload = multer({ dest: "uploads/" });
 
 // ===== RUTE =====
-
-// ✅ Ruta de test
 app.get("/api/test", (req, res) => {
   res.json({ message: "Backend funcționează corect 🚀" });
 });
 
-// ✅ Register
 app.post("/api/register", async (req, res) => {
   try {
     const { email, parola } = req.body;
@@ -77,12 +73,11 @@ app.post("/api/register", async (req, res) => {
     const user = new User({ email, parola: hashed });
     await user.save();
     res.json({ message: "User creat cu succes" });
-  } catch (err) {
+  } catch {
     res.status(400).json({ error: "Eroare la înregistrare" });
   }
 });
 
-// ✅ Login
 app.post("/api/login", async (req, res) => {
   try {
     const { email, parola } = req.body;
@@ -96,12 +91,11 @@ app.post("/api/login", async (req, res) => {
       expiresIn: "1h",
     });
     res.json({ token });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Eroare server la login" });
   }
 });
 
-// ✅ Creare anunț
 app.post(
   "/api/anunturi",
   authMiddleware,
@@ -118,25 +112,23 @@ app.post(
         descriere,
         pret,
         categorie,
-        imagini: [], // imaginile pot fi încărcate ulterior în Cloudinary
+        imagini: [],
         userId: req.user.id,
       });
 
       await anunt.save();
       res.json(anunt);
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "Eroare server la salvarea anunțului" });
     }
   }
 );
 
-// ✅ Listare anunțuri
 app.get("/api/anunturi", async (req, res) => {
   const anunturi = await Anunt.find().sort({ createdAt: -1 });
   res.json(anunturi);
 });
 
-// ✅ Ștergere anunț
 app.delete("/api/anunturi/:id", authMiddleware, async (req, res) => {
   try {
     const anunt = await Anunt.findById(req.params.id);
@@ -146,11 +138,13 @@ app.delete("/api/anunturi/:id", authMiddleware, async (req, res) => {
 
     await anunt.deleteOne();
     res.json({ message: "Anunț șters cu succes" });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Eroare server la ștergere" });
   }
 });
 
-// ===== PORNIRE SERVER =====
+// ===== Pornire server =====
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Server oltenitaimobiliare pornit pe portul ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`✅ Server oltenitaimobiliare pornit pe portul ${PORT}`)
+);
