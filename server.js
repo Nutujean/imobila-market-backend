@@ -1,4 +1,4 @@
-// server.js minimal de test
+// server.js - backend minim pentru test
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -6,22 +6,21 @@ import dotenv from "dotenv";
 dotenv.config();
 const app = express();
 
-// ===== Config =====
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI;
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/test";
 
-// ===== Conectare Mongo =====
-mongoose
-  .connect(MONGO_URI)
-  .then(() => console.log("✅ Conectat la MongoDB Atlas"))
-  .catch((err) => console.error("❌ Eroare MongoDB:", err.message));
-
-// ===== Ruta test =====
+// ✅ Rută test
 app.get("/api/test", (req, res) => {
   res.json({ message: "Backend funcționează corect 🚀" });
 });
 
-// ===== Pornire server =====
+// ✅ Conexiune Mongo
+mongoose
+  .connect(MONGO_URI)
+  .then(() => console.log("✅ Conectat la MongoDB Atlas"))
+  .catch((err) => console.error("❌ Eroare Mongo:", err.message));
+
+// ✅ Pornire server
 app.listen(PORT, () => {
   console.log(`✅ Server pornit pe portul ${PORT}`);
 });
